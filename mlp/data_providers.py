@@ -133,11 +133,11 @@ class MNISTDataProvider(DataProvider):
         super(MNISTDataProvider, self).__init__(
             inputs, targets, batch_size, max_num_batches, shuffle_order, rng)
 
-    # def next(self):
-    #    """Returns next data batch or raises `StopIteration` if at end."""
-    #    inputs_batch, targets_batch = super(MNISTDataProvider, self).next()
-    #    return inputs_batch, self.to_one_of_k(targets_batch)
-    #
+    def next(self):
+        """Returns next data batch or raises `StopIteration` if at end."""
+        inputs_batch, targets_batch = super(MNISTDataProvider, self).next()
+        return inputs_batch, self.to_one_of_k(targets_batch)
+    
     def __next__(self):
         return self.next()
 
@@ -156,8 +156,31 @@ class MNISTDataProvider(DataProvider):
             to zero except for the column corresponding to the correct class
             which is equal to one.
         """
-        raise NotImplementedError()
-
+        result = [self.__convert_to_k(target) for target in int_targets]
+        return np.array(result)
+      
+    def __convert_to_k(self, target_int):
+        match target_int:
+                case 0:
+                    return [1]+[0]*9
+                case 1:
+                    return [0]+[1]+[0]*8
+                case 2:
+                    return [0]*2+[1]+[0]*7
+                case 3:
+                    return [0]*3+[1]+[0]*6
+                case 4:
+                    return [0]*4+[1]+[0]*5
+                case 5:
+                    return [0]*5+[1]+[0]*4
+                case 6:
+                    return [0]*6+[1]+[0]*3
+                case 7:
+                    return [0]*7+[1]+[0]*2
+                case 8:
+                    return [0]*8+[1]+[0]*1
+                case 9:
+                    return [0]*9+[1]
 
 class MetOfficeDataProvider(DataProvider):
     """South Scotland Met Office weather data provider."""
@@ -188,19 +211,31 @@ class MetOfficeDataProvider(DataProvider):
             'Data file does not exist at expected path: ' + data_path
         )
         # load raw data from text file
-        # ...
+        path = "/afs/inf.ed.ac.uk/user/s19/s1953505/mlpractical/data/HadSSP_daily_qc.txt"
+        raw_table = np.loadtxt(path, skiprows=3, usecols=[i+2 for i in range(31)])
         # filter out all missing datapoints and flatten to a vector
-        # ...
+        filtered_vector = raw_table[raw_table != -99.99]
         # normalise data to zero mean, unit standard deviation
-        # ...
+        minimum = min(filtered_vector)
+        maximum = max(filtered_vector)
+        d = maximum - minimum
+        normalized_vector = [ (data-minimum)/d for data in filtered_vector]
         # convert from flat sequence to windowed data
-        # ...
+        result = []
+        current = [[]]
+        for i in range(len(normalized_vector)):
+            if ((i+1)%window_size==0):
+                current.append(normalized_vector[i])
+                result.append(current)
+                current = [[]]
+            else:
+                current[0].append(normalized_vector[i])
         # inputs are first (window_size - 1) entries in windows
-        # inputs = ...
+        inputs = np.array([[ inputs for inputs, _ in result]])
         # targets are last entry in windows
-        # targets = ...
+        targets = np.array([ target for _, target in result])
         # initialise base class with inputs and targets arrays
-        # super(MetOfficeDataProvider, self).__init__(
-        #     inputs, targets, batch_size, max_num_batches, shuffle_order, rng)
+        super(MetOfficeDataProvider, self).__init__(
+            inputs, targets, batch_size, max_num_batches, shuffle_order, rng)
     def __next__(self):
             return self.next()
