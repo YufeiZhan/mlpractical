@@ -66,3 +66,6 @@ target/
 
 #Notebook stuff
 notebooks/.ipynb_checkpoints/
+
+
+data/cifar-100-python.tar.gz
